@@ -181,10 +181,12 @@ integer :: ubc_mom = 0
 
 !Sea surface drag model parameters !GN
 logical :: use_sea_drag_model = .false.
+logical :: use_exp_decay = .false.
 real(rprec) :: ak = 0.06_rprec ! nondimensional
 real(rprec) :: c_by_ustar = 6.57 ! nondimensional
 real(rprec) :: wave_angle = 0._rprec ! radians
 integer     :: nsteps_wavy = 0 
+logical :: is_swell = .false. ! Swell correction?
 ! Prescribe bottom and top wall streamwise velocity
 ! Only for DNS (sgs=.false.) and full channel (lbc_mom = ubc_mom = 1)
 real(rprec) :: ubot = 0.0_rprec   ! nondimensional

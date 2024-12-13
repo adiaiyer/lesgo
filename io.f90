@@ -413,7 +413,7 @@ real(rprec) :: turnovers
 
 turnovers = total_time_dim / (L_x * z_i / u_star)
 
-open(2,file=path // 'output/tau_wall_top.dat', status='unknown',               &
+open(20,file=path // 'output/tau_wall_top.dat', status='unknown',               &
     form='formatted', position='append')
 
 ! one time header output
@@ -421,9 +421,9 @@ if (jt_total==wbase) write(2,*)                                                &
     'jt_total, total_time, total_time_dim, turnovers, dt, dt_dim, 1.0, tau_wall'
 
 ! continual time-related output
-write(2,*) jt_total, total_time, total_time_dim, turnovers, dt, dt_dim,        &
+write(20,*) jt_total, total_time, total_time_dim, turnovers, dt, dt_dim,        &
     1.0, get_tau_wall_top()
-close(2)
+close(20)
 
 end subroutine write_tau_wall_top
 

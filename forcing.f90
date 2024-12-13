@@ -85,6 +85,12 @@ subroutine forcing_applied()
 !  in the evaluation of u* so that mass conservation is preserved.
 !
 use types, only : rprec
+use sea_surface_drag_model
+use grid_m, only : grid
+use param, only : dz, use_sea_drag_model, use_exp_decay, coord
+use sim_param, only : fxa, fya, fza
+use mpi
+use mpi_defs, only : mpi_sync_real_array,MPI_SYNC_DOWNUP
 
 #ifdef PPTURBINES
 use sim_param, only : fxa, fya, fza
@@ -97,7 +103,7 @@ use atm_lesgo_interface, only : atm_lesgo_forcing
 #endif
 
 implicit none
-
+integer :: i,j,k
 #ifdef PPTURBINES
 ! Reset applied force arrays
 fxa = 0._rprec
@@ -113,6 +119,21 @@ fya = 0._rprec
 fza = 0._rprec
 call atm_lesgo_forcing ()
 #endif
+
+
+if (use_sea_drag_model .and. use_exp_decay) then
+   do k=1,nz
+      fxa(:,:,k)=fd_u(:,:)*exp(-k_wavno*(grid%z(k)-0.5_rprec*dz))
+      fya(:,:,k)=fd_v(:,:)*exp(-k_wavno*(grid%z(k)-0.5_rprec*dz))
+   enddo
+   if (coord == 0) then
+      fxa(:,:,1)=0._rprec
+      fya(:,:,1)=0._rprec
+   endif
+   call mpi_sync_real_array( fxa(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
+   call mpi_sync_real_array( fya(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
+   call mpi_sync_real_array( fza(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
+endif
 
 end subroutine forcing_applied
 

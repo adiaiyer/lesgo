@@ -171,7 +171,7 @@ end subroutine ws_dns_ubc
 subroutine ws_equilibrium_lbc
 !*******************************************************************************
 use param, only : coord, read_endian, dz, ld, nx, ny, vonk, zo, use_sea_drag_model, jt_total, total_time, path, nsteps_wavy
-use param, only : sea_drag_io_flag, sea_drag_io_nstart, sea_drag_io_nend, sea_drag_io_nskip, write_endian
+use param, only : sea_drag_io_flag, sea_drag_io_nstart, sea_drag_io_nend, sea_drag_io_nskip, write_endian,is_swell
 use sim_param, only : u, v, ustar_lbc
 use sea_surface_drag_model
 use string_util
@@ -186,7 +186,7 @@ integer :: i, j
 character (64) :: fname
 real(rprec), dimension(nx, ny) :: denom, u_avg
 real(rprec), dimension(ld, ny) :: u1, v1
-real(rprec) :: const, time_wavy
+real(rprec) :: const, time_wavy,factor
 logical :: exst
 
 if(use_sea_drag_model) then
@@ -242,7 +242,7 @@ call obukhov(u_avg)
 #else
 ustar_lbc = u_avg*vonk/denom
 #endif
-
+factor=1.0_rprec
 do j = 1, ny
     do i = 1, nx
         const = -(ustar_lbc(i,j)**2)/u_avg(i,j)
@@ -250,10 +250,15 @@ do j = 1, ny
        
         txz(i,j,1) = const*u1(i,j)
         tyz(i,j,1) = const*v1(i,j)
-        
-        if(use_sea_drag_model) then
-           txz(i,j,1) = txz(i,j,1) + fd_u(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
-           tyz(i,j,1) = tyz(i,j,1) + fd_v(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
+        if (use_sea_drag_model) then
+           if (is_swell .and. (u_rel_c(i,j) .lt. 0.0_rprec) )   then
+                !! This assumes wave propagating in x-direction. This is ok for now as we tilt the flow and
+                !! not the wave.
+!                factor = 0.11_rprec
+                fd_u(i,j) = -0.5_rprec/dz*(24.975_rprec - 0.964*(c_phase/ustar_lbc(i,j)))*(ak*ustar_lbc(i,j))**2
+            endif
+           txz(i,j,1) = txz(i,j,1) + factor*fd_u(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
+           tyz(i,j,1) = tyz(i,j,1) + factor*fd_v(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
            ustar_lbc(i,j) = sqrt(sqrt(txz(i,j,1)**2+tyz(i,j,1)**2)) 
            !this is as in Moeng 84
 #ifdef PPSCALARS

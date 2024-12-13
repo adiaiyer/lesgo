@@ -20,7 +20,7 @@
 module sim_param
 !*******************************************************************************
 use types, only : rprec
-use param, only : ld, nx, ny, nz, lbz, u_star
+use param, only : ld, nx, ny, nz, lbz, u_star, use_exp_decay
 implicit none
 
 save
@@ -80,7 +80,12 @@ allocate ( p(ld, ny, 0:nz) ); p = 0.0_rprec
 allocate ( divtx(ld, ny, lbz:nz) ); divtx = 0.0_rprec
 allocate ( divty(ld, ny, lbz:nz) ); divty = 0.0_rprec
 allocate ( divtz(ld, ny, lbz:nz) ); divtz = 0.0_rprec
+if (use_exp_decay) then
 
+allocate ( fxa(ld, ny, lbz:nz) ); fxa = 0.0_rprec
+allocate ( fya(ld, ny, lbz:nz) ); fya = 0.0_rprec
+allocate ( fza(ld, ny, lbz:nz) ); fza = 0.0_rprec
+endif
 #if defined(PPTURBINES) || defined(PPATM) || defined(PPLVLSET)
 allocate ( fxa(ld, ny, lbz:nz) ); fxa = 0.0_rprec
 allocate ( fya(ld, ny, lbz:nz) ); fya = 0.0_rprec

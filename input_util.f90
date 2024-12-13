@@ -455,6 +455,8 @@ do
                 Read (buff(equal_pos+1:), *) ubc_mom
             case ('USE_SEA_DRAG_MODEL')
                 Read (buff(equal_pos+1:), *) use_sea_drag_model
+            case ('USE_EXP_DECAY')
+                Read (buff(equal_pos+1:), *) use_exp_decay
             case ('AK')
                 Read (buff(equal_pos+1:), *) ak
             case ('C_BY_USTAR')
@@ -463,6 +465,8 @@ do
                 Read (buff(equal_pos+1:), *) wave_angle
             case ('NSTEPS_WAVY')
                 Read (buff(equal_pos+1:), *) nsteps_wavy
+            case ('IS_SWELL')
+                Read (buff(equal_pos+1:), *) is_swell
             case ('UBOT')
                 Read (buff(equal_pos+1:), *) ubot
             case ('UTOP')
