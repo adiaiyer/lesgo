@@ -455,7 +455,7 @@ do
                 Read (buff(equal_pos+1:), *) ubc_mom
             case ('USE_SEA_DRAG_MODEL')
                 Read (buff(equal_pos+1:), *) use_sea_drag_model
-            case ('USE_EXP_DECAY')
+            case ('USE_EXP_DECAY') 
                 Read (buff(equal_pos+1:), *) use_exp_decay
             case ('AK')
                 Read (buff(equal_pos+1:), *) ak

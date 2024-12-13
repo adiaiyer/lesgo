@@ -101,7 +101,6 @@ use turbines, only:turbines_forcing
 use sim_param, only : fxa, fya, fza ! The body force components
 use atm_lesgo_interface, only : atm_lesgo_forcing
 #endif
-
 implicit none
 integer :: i,j,k
 #ifdef PPTURBINES
@@ -120,12 +119,12 @@ fza = 0._rprec
 call atm_lesgo_forcing ()
 #endif
 
-
 if (use_sea_drag_model .and. use_exp_decay) then
    do k=1,nz
       fxa(:,:,k)=fd_u(:,:)*exp(-k_wavno*(grid%z(k)-0.5_rprec*dz))
       fya(:,:,k)=fd_v(:,:)*exp(-k_wavno*(grid%z(k)-0.5_rprec*dz))
    enddo
+
    if (coord == 0) then
       fxa(:,:,1)=0._rprec
       fya(:,:,1)=0._rprec
@@ -134,7 +133,6 @@ if (use_sea_drag_model .and. use_exp_decay) then
    call mpi_sync_real_array( fya(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
    call mpi_sync_real_array( fza(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
 endif
-
 end subroutine forcing_applied
 
 !*******************************************************************************
