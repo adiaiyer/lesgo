@@ -11,7 +11,7 @@ set(CMAKE_Fortran_COMPILER_ID "Intel")
 # Set the name of the computer you are compiling on.
 # Supported computers: rockfish, panoramix, njord, marcc, darwin-brew, cheyenne, stampede
 # Otherwise, default settings are used
-set(hostname "derecho")
+set(hostname "sol_rapids")
 
 # Read and write binary files as big_endian or little_endian
 # Options: DEFAULT, LITTLE, or BIG
@@ -20,7 +20,7 @@ set(READ_ENDIAN "DEFAULT")
 
 # Options to enable various features in the code
 option(USE_MPI "Enable parallelization support." ON)
-option(USE_CPS "Enable concurrent precursor simulations." ON)
+option(USE_CPS "Enable concurrent precursor simulations." OFF)
 option(USE_HIT "Enable homogeneous isotropic turbulence input." OFF)
 option(USE_LVLSET "Enable level set." OFF)
 option(USE_TURBINES "Enable actuator disk model without rotation." OFF)
@@ -148,6 +148,24 @@ elseif (${hostname} STREQUAL "derecho")
             link_directories($ENV{HOME}/hdf5/lib/ $ENV{HOME}/cgns/lib/)
         endif ()
     endif ()
+# Sol Rapids
+
+elseif (${hostname} STREQUAL "sol_rapids")
+    # Intel
+    if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
+	    include_directories($ENV{LURC_FFTW_DIR}/include)
+	link_directories($ENV{LURC_FFTW_DIR}/lib)
+	#        link_libraries(fftw3)
+    # GNU -- These have to be installed locally for now.
+    elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
+	include_directories(/home/ada823/opt/fftw3/include)
+	link_directories(/home/ada823/opt/fftw3/lib)
+        if (USE_CGNS)
+            include_directories($ENV{HOME}/cgns/include/)
+            link_directories($ENV{HOME}/hdf5/lib/ $ENV{HOME}/cgns/lib/)
+        endif ()
+    endif ()
+    
 # stampede
 elseif (${hostname} STREQUAL "stampede")
     # Intel
@@ -182,7 +200,7 @@ set (Sources cfl_util.f90 clocks.f90 convec.f90 coriolis.f90 derivatives.f90 div
 
 if (USE_MPI)
     add_definitions(-DPPMPI)
-    set (CMAKE_Fortran_COMPILER mpif90)
+    set (CMAKE_Fortran_COMPILER mpiifort)
     set(Sources ${Sources} mpi_transpose_mod.f90 mpi_defs.f90)
     set(exec_name "${exec_name}-mpi")
 endif (USE_MPI)
@@ -267,7 +285,7 @@ endif (READ_ENDIAN STREQUAL "BIG")
 # Intel
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
     #set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp -O2  -funroll-loops -no-wrap-margin -assume byterecl")
-    set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp -O0 -g -traceback -no-wrap-margin -assume byterecl")
+    set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp -O2 -g -traceback -no-wrap-margin -assume byterecl")
 # GNU
 else (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
     set (CMAKE_Fortran_FLAGS "-cpp -O2 -ffast-math -funroll-loops -fall-intrinsics -Wall -fcheck=all")
