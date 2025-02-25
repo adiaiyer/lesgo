@@ -242,7 +242,6 @@ call obukhov(u_avg)
 #else
 ustar_lbc = u_avg*vonk/denom
 #endif
-factor=1.0_rprec
 do j = 1, ny
     do i = 1, nx
         const = -(ustar_lbc(i,j)**2)/u_avg(i,j)
@@ -250,34 +249,35 @@ do j = 1, ny
        
         txz(i,j,1) = const*u1(i,j)
         tyz(i,j,1) = const*v1(i,j)
+        ustar_lbc(i,j) = sqrt(sqrt(txz(i,j,1)**2+tyz(i,j,1)**2))  ! An aproximation of u_* based on tau_t
         if (use_sea_drag_model) then
            if (is_swell .and. (u_rel_c(i,j) .lt. 0.0_rprec) )   then
                 !! This assumes wave propagating in x-direction. This is ok for now as we tilt the flow and
                 !! not the wave.
-!                factor = 0.11_rprec
                 fd_u(i,j) = -0.5_rprec/dz*(24.975_rprec - 0.964*(c_phase/ustar_lbc(i,j)))*(ak*ustar_lbc(i,j))**2
             endif
-           txz(i,j,1) = txz(i,j,1) + factor*fd_u(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
-           tyz(i,j,1) = tyz(i,j,1) + factor*fd_v(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
-           ustar_lbc(i,j) = sqrt(sqrt(txz(i,j,1)**2+tyz(i,j,1)**2)) 
+           txz(i,j,1) = txz(i,j,1) + fd_u(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
+           tyz(i,j,1) = tyz(i,j,1) + fd_v(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
+           ustar_lbc(i,j) = sqrt(sqrt(txz(i,j,1)**2+tyz(i,j,1)**2)) i! Recalculate u_* based on total stress
            !this is as in Moeng 84
 #ifdef PPSCALARS
-           dudz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*u_rel(i,j)/u_avg(i,j)   &
-            * phi_m(i,j)
-           dvdz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*v_rel(i,j)/u_avg(i,j)   &
+           dudz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*u1(i,j)/u_avg(i,j)   &
+            * phi_m(i,j) 
+           dvdz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*v1(i,j)/u_avg(i,j)   &
             * phi_m(i,j)
 #else
-           dudz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*u_rel(i,j)/u_avg(i,j)
-           dvdz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*v_rel(i,j)/u_avg(i,j)
+           dudz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*u1(i,j)/u_avg(i,j)
+           dvdz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*v1(i,j)/u_avg(i,j)
 #endif
            dudz(i,j,1) = merge(0._rprec,dudz(i,j,1),u_rel(i,j).eq.0._rprec)
            dvdz(i,j,1) = merge(0._rprec,dvdz(i,j,1),v_rel(i,j).eq.0._rprec)
         else
            !this is as in Moeng 84
-#ifdef PPSCALARS
-           dudz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*u(i,j,1)/u_avg(i,j)   &
+#ifdef PPSCALAR
+           ! AA Displacenment height correction to gradientsS
+           dudz(i,j,1) = ustar_lbc(i,j)/((0.5_rprec*dz - eta(i,j))*vonK)*u(i,j,1)/u_avg(i,j)   &
             * phi_m(i,j)
-           dvdz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*v(i,j,1)/u_avg(i,j)   &
+           dvdz(i,j,1) = ustar_lbc(i,j)/((0.5_rprec*dz - eta(i,j))*vonK)*v(i,j,1)/u_avg(i,j)   &
             * phi_m(i,j)
 #else
            dudz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*u(i,j,1)/u_avg(i,j)
