@@ -392,15 +392,17 @@ end subroutine scalars_deriv
 !*******************************************************************************
 subroutine obukhov(u_avg)
 !*******************************************************************************
-use param, only : vonk, dz, zo, nx, ny, ld, u_star, lbz, total_time_dim, dt, coord, z_i, jt_total
+use param, only : vonk, dz, zo, nx, ny, ld, u_star, lbz, total_time_dim, dt, coord, z_i, jt_total, &
+                  use_sea_drag_model
+use sea_surface_drag_model, only : eta
 use sim_param, only : ustar_lbc
 use coriolis, only : repeat_interval
 use functions, only : linear_interp
 use test_filtermodule
 
 real(rprec), dimension(nx, ny), intent(in) :: u_avg
+real(rprec), dimension(nx, ny) :: denom
 real(rprec), dimension(ld, ny) :: theta1
-
 integer :: i, j
 ! Use previous ustar_lbc to compute stability correction
 if (passive_scalar) then
@@ -413,20 +415,45 @@ call test_filter(theta1)
 
 ! Using previous time step's psi_m and psi_h to calculate obukhov length and
 ! stability functions
-ustar_lbc = u_avg*vonk/(log(0.5_rprec*dz/zo) + psi_m)
-tstar_lbc = (theta1(1:nx,:) - scal_bot)*vonk                                   &
-    / (log(0.5_rprec*dz/zo_s) + psi_h)
 
-L = ustar_lbc**2*theta1(1:nx,:)/(vonk*g*tstar_lbc)
-do i = 1, nx
-    do j = 1, ny
-        call stability(L(i,j), zo_s, phi_m(i,j), phi_h(i,j), psi_m(i,j),       &
-            psi_h(i,j))
-    end do
-end do
+!BOC AA
+if (use_sea_drag_model) then
 
-! Recompute ustar_lbc using new values
-ustar_lbc = u_avg*vonk/(log(0.5_rprec*dz/zo) + psi_m)
+  denom = log(0.5_rprec*dz/zo-eta(1:nx,:)/zo)
+  ustar_lbc = u_avg*vonk/(denom + psi_m)
+  tstar_lbc = (theta1(1:nx,:) - scal_bot)*vonk                                   &
+      / (log(0.5_rprec*dz/zo_s) + psi_h)
+  
+  L = ustar_lbc**2*theta1(1:nx,:)/(vonk*g*tstar_lbc)
+  do i = 1, nx
+      do j = 1, ny
+          call stability(L(i,j), zo_s, phi_m(i,j), phi_h(i,j), psi_m(i,j),       &
+              psi_h(i,j))
+      end do
+  end do
+  
+  ! Recompute ustar_lbc using new values
+  ustar_lbc = u_avg*vonk/(log(0.5_rprec*dz/zo) + psi_m)
+
+else
+
+  ustar_lbc = u_avg*vonk/(log(0.5_rprec*dz/zo) + psi_m)
+  tstar_lbc = (theta1(1:nx,:) - scal_bot)*vonk                                   &
+      / (log(0.5_rprec*dz/zo_s) + psi_h)
+  
+  L = ustar_lbc**2*theta1(1:nx,:)/(vonk*g*tstar_lbc)
+  do i = 1, nx
+      do j = 1, ny
+          call stability(L(i,j), zo_s, phi_m(i,j), phi_h(i,j), psi_m(i,j),       &
+              psi_h(i,j))
+      end do
+  end do
+  
+  ! Recompute ustar_lbc using new values
+!  ustar_lbc = u_avg*vonk/(log(0.5_rprec*dz/zo) + psi_m)
+   ustar_lbc = u_avg*vonk/(denom + psi_m) !AA Using displacement height here.
+endif
+
 
 ! Get boundary condition if reading from file
 if (read_lbc_scal) then

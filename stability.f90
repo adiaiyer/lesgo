@@ -20,6 +20,7 @@ if (abs(L) > 1/epsilon(0._rprec)) then
     psi_h = 0._rprec
 ! Stable or unstable
 else
+    ! Add displacement height to stability function? 
     psi_m = -calc_psi_m(dz*0.5_rprec/L) + calc_psi_m(zo/L)
     ! write(*,*) dz*0.5_rprec/L, zo/L, psi_m
     ! stop
