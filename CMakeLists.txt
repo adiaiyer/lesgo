@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 2.8.9)
 
 # Specify Compiler
 # Options: Intel and GNU
-set(CMAKE_Fortran_COMPILER_ID "Intel")
+set(CMAKE_Fortran_COMPILER_ID "GNU")
 
 # Set the name of the computer you are compiling on.
 # Supported computers: rockfish, panoramix, njord, marcc, darwin-brew, cheyenne, stampede
@@ -158,8 +158,8 @@ elseif (${hostname} STREQUAL "sol_rapids")
 	#        link_libraries(fftw3)
     # GNU -- These have to be installed locally for now.
     elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
-	include_directories(/home/ada823/opt/fftw3/include)
-	link_directories(/home/ada823/opt/fftw3/lib)
+	    include_directories($ENV{LURC_FFTW_DIR}/include)
+	link_directories($ENV{LURC_FFTW_DIR}/lib)
         if (USE_CGNS)
             include_directories($ENV{HOME}/cgns/include/)
             link_directories($ENV{HOME}/hdf5/lib/ $ENV{HOME}/cgns/lib/)
@@ -200,7 +200,7 @@ set (Sources cfl_util.f90 clocks.f90 convec.f90 coriolis.f90 derivatives.f90 div
 
 if (USE_MPI)
     add_definitions(-DPPMPI)
-    set (CMAKE_Fortran_COMPILER mpiifort)
+    set (CMAKE_Fortran_COMPILER mpifort)
     set(Sources ${Sources} mpi_transpose_mod.f90 mpi_defs.f90)
     set(exec_name "${exec_name}-mpi")
 endif (USE_MPI)
@@ -288,7 +288,7 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
     set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp -O2 -g -traceback -no-wrap-margin -assume byterecl")
 # GNU
 else (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
-    set (CMAKE_Fortran_FLAGS "-cpp -O2 -ffast-math -funroll-loops -fall-intrinsics -Wall -fcheck=all")
+    set (CMAKE_Fortran_FLAGS "-cpp -O2 -ffast-math -ffree-line-length-none -funroll-loops -fall-intrinsics -Wall -fcheck=all")
     #set (CMAKE_Fortran_FLAGS "-cpp -O0 -g -fbacktrace -fall-intrinsics -Wall -fcheck=all")
 endif (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
 

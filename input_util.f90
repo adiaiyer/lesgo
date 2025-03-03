@@ -457,6 +457,8 @@ do
                 Read (buff(equal_pos+1:), *) use_sea_drag_model
             case ('USE_EXP_DECAY') 
                 Read (buff(equal_pos+1:), *) use_exp_decay
+            case ('WAVE_ORIENTATION') 
+                Read (buff(equal_pos+1:), *) wave_orientation
             case ('AK')
                 Read (buff(equal_pos+1:), *) ak
             case ('C_BY_USTAR')

@@ -258,7 +258,7 @@ do j = 1, ny
             endif
            txz(i,j,1) = txz(i,j,1) + fd_u(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
            tyz(i,j,1) = tyz(i,j,1) + fd_v(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
-           ustar_lbc(i,j) = sqrt(sqrt(txz(i,j,1)**2+tyz(i,j,1)**2)) i! Recalculate u_* based on total stress
+           ustar_lbc(i,j) = sqrt(sqrt(txz(i,j,1)**2+tyz(i,j,1)**2))! Recalculate u_* based on total stress
            !this is as in Moeng 84
 #ifdef PPSCALARS
            dudz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*u1(i,j)/u_avg(i,j)   &
