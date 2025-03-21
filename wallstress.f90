@@ -238,7 +238,7 @@ call test_filter(v1)
 
 u_avg = sqrt(u1(1:nx,1:ny)**2+v1(1:nx,1:ny)**2)
 #ifdef PPSCALARS
-call obukhov(u_avg)
+call obukhov(u_avg,denom)
 #else
 ustar_lbc = u_avg*vonk/denom
 #endif
