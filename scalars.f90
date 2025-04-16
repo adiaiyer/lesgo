@@ -431,7 +431,7 @@ if (use_sea_drag_model) then
               psi_h(i,j))
       end do
   end do
-  
+  !AA Using displacement height here.
   ! Recompute ustar_lbc using new values
   ustar_lbc = u_avg*vonk/(denom + psi_m)
 
@@ -450,8 +450,8 @@ else
   end do
   
   ! Recompute ustar_lbc using new values
-!  ustar_lbc = u_avg*vonk/(log(0.5_rprec*dz/zo) + psi_m)
-   ustar_lbc = u_avg*vonk/(denom + psi_m) !AA Using displacement height here.
+  ustar_lbc = u_avg*vonk/(log(0.5_rprec*dz/zo) + psi_m)
+!   ustar_lbc = u_avg*vonk/(denom + psi_m) 
 endif
 
 

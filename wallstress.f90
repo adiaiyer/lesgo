@@ -186,7 +186,7 @@ integer :: i, j
 character (64) :: fname
 real(rprec), dimension(nx, ny) :: denom, u_avg
 real(rprec), dimension(ld, ny) :: u1, v1
-real(rprec) :: const, time_wavy,factor
+real(rprec) :: const, time_wavy,factor,zloc,swell_term
 logical :: exst
 
 if(use_sea_drag_model) then
@@ -195,7 +195,12 @@ if(use_sea_drag_model) then
         u1 = u_rel(:,:)
         v1 = v_rel(:,:)
         !end do
-        denom = log(0.5_rprec*dz/zo-eta(1:nx,:)/zo)
+!! AA BOC
+!! We should not use the first grid point for stress calculaktions., Ideally use U10?.
+!! For now lets just use the third grid point. Only will change the wave routines
+!! z_3 = 5*dz/2    
+ zloc  = 2.5_rprec*dz
+        denom = log(zloc/zo-eta(1:nx,:)/zo)
 
         do i=1,nx
         do j=1,ny
@@ -203,8 +208,8 @@ if(use_sea_drag_model) then
                    print *,"denom has NaN"
                    stop
            elseif(denom(i,j).eq.0)then
-                   print *,"denom has zero:i,j,dz,eta,dz-eta,zo,log(dz-eta)",i,j,0.5_rprec*dz,eta(i,j) &
-                                                      ,0.5_rprec*dz-eta(i,j),zo,log(0.5_rprec*dz/zo-eta(i,j)/zo)
+                   print *,"denom has zero:i,j,dz,eta,dz-eta,zo,log(dz-eta)",i,j,zloc,eta(i,j) &
+                                                      ,zloc-eta(i,j),zo,log(zloc/zo-eta(i,j)/zo)
            endif
         enddo
         enddo
@@ -242,6 +247,7 @@ call obukhov(u_avg,denom)
 #else
 ustar_lbc = u_avg*vonk/denom
 #endif
+!ustar_av = sum(ustar_lbc)/(nx*ny)
 do j = 1, ny
     do i = 1, nx
         const = -(ustar_lbc(i,j)**2)/u_avg(i,j)
@@ -251,33 +257,36 @@ do j = 1, ny
         tyz(i,j,1) = const*v1(i,j)
         ustar_lbc(i,j) = sqrt(sqrt(txz(i,j,1)**2+tyz(i,j,1)**2))  ! An aproximation of u_* based on tau_t
         if (use_sea_drag_model) then
-           if (is_swell .and. (u_rel_c(i,j) .lt. 0.0_rprec) )   then
+           if (is_swell .and. (u_rel_c(i,j) .lt. 0.0_rprec) .and. (fd_u(i,j) .gt. 1.0E-8_rprec) )   then
                 !! This assumes wave propagating in x-direction. This is ok for now as we tilt the flow and
                 !! not the wave.
-                fd_u(i,j) = -0.5_rprec/dz*(24.975_rprec - 0.964*(c_phase/ustar_lbc(i,j)))*(ak*ustar_lbc(i,j))**2
+                swell_term = -0.5_rprec/dz*(24.975_rprec*ustar_lbc(i,j)**2 - 0.964*(c_phase*ustar_lbc(i,j)))*(ak)**2
+!                if (coord .eq.0) write(*,*) "i,j,urel,ustar,swell,wdm",i,j,u_rel_c(i,j),ustar_lbc(i,j), swell_term, fd_u(i,j)
+                fd_u(i,j) = swell_term 
             endif
            txz(i,j,1) = txz(i,j,1) + fd_u(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
            tyz(i,j,1) = tyz(i,j,1) + fd_v(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
            ustar_lbc(i,j) = sqrt(sqrt(txz(i,j,1)**2+tyz(i,j,1)**2))! Recalculate u_* based on total stress
            !this is as in Moeng 84
+           
+! AA Displacenment height correction to gradientsS
 #ifdef PPSCALARS
-           dudz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*u1(i,j)/u_avg(i,j)   &
+           dudz(i,j,1) = ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*u1(i,j)/u_avg(i,j)   &
             * phi_m(i,j) 
-           dvdz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*v1(i,j)/u_avg(i,j)   &
+           dvdz(i,j,1) = ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*v1(i,j)/u_avg(i,j)   &
             * phi_m(i,j)
 #else
-           dudz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*u1(i,j)/u_avg(i,j)
-           dvdz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*v1(i,j)/u_avg(i,j)
+           dudz(i,j,1) = ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*u1(i,j)/u_avg(i,j)
+           dvdz(i,j,1) = ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*v1(i,j)/u_avg(i,j)
 #endif
            dudz(i,j,1) = merge(0._rprec,dudz(i,j,1),u_rel(i,j).eq.0._rprec)
            dvdz(i,j,1) = merge(0._rprec,dvdz(i,j,1),v_rel(i,j).eq.0._rprec)
         else
            !this is as in Moeng 84
 #ifdef PPSCALAR
-           ! AA Displacenment height correction to gradientsS
-           dudz(i,j,1) = ustar_lbc(i,j)/((0.5_rprec*dz - eta(i,j))*vonK)*u(i,j,1)/u_avg(i,j)   &
+           dudz(i,j,1) = ustar_lbc(i,j)/((0.5_rprec*dz)*vonK)*u(i,j,1)/u_avg(i,j)   &
             * phi_m(i,j)
-           dvdz(i,j,1) = ustar_lbc(i,j)/((0.5_rprec*dz - eta(i,j))*vonK)*v(i,j,1)/u_avg(i,j)   &
+           dvdz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*v(i,j,1)/u_avg(i,j)   &
             * phi_m(i,j)
 #else
            dudz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*u(i,j,1)/u_avg(i,j)

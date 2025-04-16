@@ -118,11 +118,10 @@ SELECT CASE (WAVE_ORIENTATION)
     
       n_u(i,j)    = u_rel_c(i,j)/SQRT(u_rel_c(i,j)**2+v_rel_c(i,j)**2)
       n_v(i,j)    = v_rel_c(i,j)/SQRT(u_rel_c(i,j)**2+v_rel_c(i,j)**2)
-      fd_u(i,j)   = -SIGN(1._rprec,u_rel_c(i,j))*1.2/(1+6*a_amp**2*k_wavno**2)*(a_amp*k_wavno)*u(i,j,1)/dz &
+      fd_u(i,j)   = -SIGN(1._rprec,u_rel_c(i,j))*1.2/(1+6*a_amp**2*k_wavno**2)*(a_amp*k_wavno)*abs(u(i,j,1))/dz &
                    *SQRT(u_rel_c(i,j)**2+v_rel_c(i,j)**2) &
-                   *(n_u(i,j)*detadx(i,j)+n_v(i,j)*detady(i,j))*heaviside_scalar(n_u(i,j)*detadx(i,j)+n_v(i,j)*detady(i,j))
-    
-      fd_v(i,j)   = -SIGN(1._rprec,v_rel_c(i,j))*1.2/(1+6*a_amp**2*k_wavno**2)*(a_amp*k_wavno)*v(i,j,1)/dz &
+                   *(n_u(i,j)*detadx(i,j)+n_v(i,j)*detady(i,j))*heaviside_scalar(n_u(i,j)*detadx(i,j)+n_v(i,j)*detady(i,j)) 
+      fd_v(i,j)   = -SIGN(1._rprec,v_rel_c(i,j))*1.2/(1+6*a_amp**2*k_wavno**2)*(a_amp*k_wavno)*abs(v(i,j,1))/dz &
                    *SQRT(u_rel_c(i,j)**2+v_rel_c(i,j)**2) &
                    *(n_u(i,j)*detadx(i,j)+n_v(i,j)*detady(i,j))*heaviside_scalar(n_u(i,j)*detadx(i,j)+n_v(i,j)*detady(i,j))
     
@@ -138,20 +137,20 @@ SELECT CASE (WAVE_ORIENTATION)
       us_orb(i,j) =   a_amp*omega_freq*cos( kx_wavno*grid%x(i) + ky_wavno*grid%y(j) - omega_freq*total_time )
       ws_orb(i,j) =   a_amp*omega_freq*sin( kx_wavno*grid%x(i) + ky_wavno*grid%y(j) - omega_freq*total_time )
     
-      u_rel(i,j)  =  u(i,j,1) - us_orb(i,j)
-      v_rel(i,j)  =  v(i,j,1) - vs_orb(i,j)
-      w_rel(i,j)  =  w(i,j,1) - ws_orb(i,j)
-    
+      u_rel(i,j)  =  u(i,j,3) - us_orb(i,j)
+      v_rel(i,j)  =  v(i,j,3) - vs_orb(i,j)
+      w_rel(i,j)  =  w(i,j,3) - ws_orb(i,j)
+   
       u_rel_c(i,j)=  u(i,j,1) - cx_phase
       v_rel_c(i,j)=  v(i,j,1) - cy_phase
     
       n_u(i,j)    = u_rel_c(i,j)/SQRT(u_rel_c(i,j)**2+v_rel_c(i,j)**2)
       n_v(i,j)    = v_rel_c(i,j)/SQRT(u_rel_c(i,j)**2+v_rel_c(i,j)**2)
-      fd_u(i,j)   = -SIGN(1._rprec,u_rel_c(i,j))*1.2/(1+6*a_amp**2*k_wavno**2)*(a_amp*k_wavno)*u(i,j,1)/dz &
+      fd_u(i,j)   = -SIGN(1._rprec,u_rel_c(i,j))*1.2/(1+6*a_amp**2*k_wavno**2)*(a_amp*k_wavno)*abs(u(i,j,1))/dz &
                    *SQRT(u_rel_c(i,j)**2+v_rel_c(i,j)**2) &
                    *(n_u(i,j)*detadx(i,j)+n_v(i,j)*detady(i,j))*heaviside_scalar(n_u(i,j)*detadx(i,j)+n_v(i,j)*detady(i,j))
     
-      fd_v(i,j)   = -SIGN(1._rprec,v_rel_c(i,j))*1.2/(1+6*a_amp**2*k_wavno**2)*(a_amp*k_wavno)*v(i,j,1)/dz &
+      fd_v(i,j)   = -SIGN(1._rprec,v_rel_c(i,j))*1.2/(1+6*a_amp**2*k_wavno**2)*(a_amp*k_wavno)*abs(v(i,j,1))/dz &
                    *SQRT(u_rel_c(i,j)**2+v_rel_c(i,j)**2) &
                    *(n_u(i,j)*detadx(i,j)+n_v(i,j)*detady(i,j))*heaviside_scalar(n_u(i,j)*detadx(i,j)+n_v(i,j)*detady(i,j))
     end do
@@ -172,5 +171,12 @@ do i = 1,nx
 enddo
 
 end subroutine
+
+!subroutine JONSWAP(EK)
+
+
+
+!end subroutine 
+
 
 end module sea_surface_drag_model
