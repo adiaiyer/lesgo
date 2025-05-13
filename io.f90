@@ -935,13 +935,15 @@ use param, only : yplane_nloc, yplane_loc
 use param, only : zplane_nloc, zplane_loc
 use param, only : dx, dy
 use param, only : write_endian
+use param, only : use_exp_decay, use_sea_drag_model
 use sgs_param, only : Cs_opt2, F_LM, F_MM, F_QN, F_NN, Nu_t
 use grid_m
 use sim_param, only : u, v, w, p
 use sim_param, only : txx,tyy,tzz,txy,txz,tyz !GN
+use sim_param, only : fxa, fya, fza !AA
 use sim_param, only : dwdy, dwdx, dvdx, dudy
 use functions, only : interp_to_w_grid
-
+use sea_surface_drag_model, only : fd_u, fd_v
 use stat_defs, only : xplane, yplane
 #ifdef PPMPI
 use stat_defs, only : zplane, point
@@ -1098,6 +1100,33 @@ elseif(itype==2) then
     close(13)
 #endif
 
+    ! Common file name for all output types !AA
+    call string_splice(fname, path //'output/wavestress.', jt_total)
+
+#if defined(PPCGNS) && defined(PPMPI)
+    ! Write CGNS Output
+    call string_concat(fname, '.cgns')
+    call write_parallel_cgns(fname, nx, ny, nz - nz_end, nz_tot,               &
+        (/ 1, 1,   (nz-1)*coord + 1 /),                                        &
+        (/ nx, ny, (nz-1)*(coord+1) + 1 - nz_end /),                           &
+        x(1:nx) , y(1:ny) , z(1:(nz-nz_end) ),                                 &
+        5, (/ 'txx', 'tyy', 'tzz','txy','txz','tyz' /),                        &
+        (/ fxa(1:nx,1:ny,1:(nz-nz_end)), fya(1:nx,1:ny,1:(nz-nz_end)),             &
+         fza(1:nx,1:ny,1:(nz-nz_end)) /) )
+#else
+    if (use_sea_drag_model .and. use_exp_decay) then
+            fxa(:nx,:ny,1) = fd_u(:nx,:ny)*dz 
+            fya(:nx,:ny,1) = fd_v(:nx,:ny)*dz
+    ! Write binary Output
+    call string_concat(fname, bin_ext)
+    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+        access='direct', recl=nx*ny*nz*rprec)
+    write(13,rec=1) fxa(:nx,:ny,1:nz)
+    write(13,rec=2) fya(:nx,:ny,1:nz)
+    write(13,rec=3) fza(:nx,:ny,1:nz)
+    close(13)
+    endif
+#endif
 
     ! Compute vorticity
     allocate(vortx(nx,ny,lbz:nz), vorty(nx,ny,lbz:nz), vortz(nx,ny,lbz:nz))
@@ -1400,7 +1429,15 @@ fx_tot = 0._rprec
 fy_tot = 0._rprec
 fz_tot = 0._rprec
 #endif
+!! AA BOC
+if (use_sea_drag_model .and. use_exp_decay) then
 
+fx_tot = fxa(1:nx,1:ny,1:nz)
+fy_tot = fya(1:nx,1:ny,1:nz)
+fz_tot = fza(1:nx,1:ny,1:nz)
+endif
+
+!! AA EOC
 #ifdef PPMPI
 !  Sync forces
 call mpi_sync_real_array( fx_tot, 1, MPI_SYNC_DOWN )

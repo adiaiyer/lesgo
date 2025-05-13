@@ -277,6 +277,14 @@ time_loop: do jt_step = nstart, nsteps
     RHSz(:,:,1:nz-1) = RHSz(:,:,1:nz-1) + fza(:,:,1:nz-1)
 #endif
 
+    ! Updated RHS if Exponential forcing is true
+    
+    if (use_sea_drag_model .and. use_exp_decay) then
+      RHSx(:,:,1:nz-1) = RHSx(:,:,1:nz-1) + fxa(:,:,1:nz-1)
+      RHSy(:,:,1:nz-1) = RHSy(:,:,1:nz-1) + fya(:,:,1:nz-1)
+      RHSz(:,:,1:nz-1) = RHSz(:,:,1:nz-1) + fza(:,:,1:nz-1)
+    end if 
+
     !//////////////////////////////////////////////////////
     !/// EULER INTEGRATION CHECK                        ///
     !//////////////////////////////////////////////////////

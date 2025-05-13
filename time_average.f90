@@ -39,6 +39,7 @@ real(rprec), allocatable, dimension(:,:,:) :: pres_real
 #if defined(PPTURBINES) || defined(PPATM) || defined(PPLVLSET)
 real(rprec), allocatable, dimension(:,:,:) :: fza_uv
 #endif
+real(rprec), allocatable, dimension(:,:,:) :: fza_uv
 #ifdef PPSCALARS
 real(rprec), allocatable, dimension(:,:,:) :: theta_w
 #ifdef PPMPI
@@ -193,6 +194,7 @@ allocate(w_uv(nx,ny,lbz:nz), u_w(nx,ny,lbz:nz), v_w(nx,ny,lbz:nz))
 #if defined(PPTURBINES) || defined(PPATM) || defined(PPLVLSET)
 allocate(fza_uv(nx,ny,lbz:nz))
 #endif
+allocate(fza_uv(nx,ny,lbz:nz))
 allocate(pres_real(nx,ny,lbz:nz))
 allocate(vortx(nx,ny,lbz:nz), vorty(nx,ny,lbz:nz), vortz(nx,ny,lbz:nz))
 #ifdef PPSCALARS
@@ -222,6 +224,7 @@ use sim_param, only : dudy, dudz, dvdx, dvdz, dwdx, dwdy
 #if defined(PPTURBINES) || defined(PPATM) || defined(PPLVLSET)
 use sim_param, only : fxa, fya, fza
 #endif
+use sim_param, only : fxa, fya, fza
 !GN
 #ifdef PPMPI
 use mpi
@@ -243,6 +246,7 @@ v_w(1:nx,1:ny,lbz:nz) = interp_to_w_grid(v(1:nx,1:ny,lbz:nz), lbz )
 #if defined(PPTURBINES) || defined(PPATM) || defined(PPLVLSET)
 fza_uv(1:nx,1:ny,lbz:nz) = interp_to_uv_grid(fza(1:nx,1:ny,lbz:nz), lbz )
 #endif
+fza_uv(1:nx,1:ny,lbz:nz) = interp_to_uv_grid(fza(1:nx,1:ny,lbz:nz), lbz )
 #ifdef PPSCALARS
 theta_w(1:nx,1:ny,lbz:nz) = interp_to_w_grid(theta(1:nx,1:ny,lbz:nz), lbz )
 if ( coord == 0 ) then
@@ -303,6 +307,9 @@ this%fx(:,:,1:) = this%fx(:,:,1:) + fxa(1:nx,1:ny,1:)*this%dt
 this%fy(:,:,1:) = this%fy(:,:,1:) + fya(1:nx,1:ny,1:)*this%dt
 this%fz(:,:,1:) = this%fz(:,:,1:) + fza_uv(1:nx,1:ny,1:)*this%dt
 #endif
+this%fx(:,:,1:) = this%fx(:,:,1:) + fxa(1:nx,1:ny,1:)*this%dt
+this%fy(:,:,1:) = this%fy(:,:,1:) + fya(1:nx,1:ny,1:)*this%dt
+this%fz(:,:,1:) = this%fz(:,:,1:) + fza_uv(1:nx,1:ny,1:)*this%dt
 
 this%cs_opt2(:,:,1:) = this%cs_opt2(:,:,1:) + Cs_opt2(1:nx,1:ny,1:)*this%dt
 
@@ -408,7 +415,7 @@ end subroutine compute
 subroutine finalize(this)
 !*******************************************************************************
 use grid_m
-use param, only : write_endian, lbz, path, coord, nproc
+use param, only : write_endian, lbz, path, coord, nproc,use_sea_drag_model,use_exp_decay
 use string_util
 #ifdef PPMPI
 use mpi_defs, only : mpi_sync_real_array,MPI_SYNC_DOWNUP
@@ -754,6 +761,15 @@ write(13,rec=2) this%fy(:nx,:ny,1:nz)
 write(13,rec=3) this%fz(:nx,:ny,1:nz)
 close(13)
 #endif
+
+if (use_sea_drag_model .and. use_exp_decay) then
+open(unit=13, file=fname_f, form='unformatted', convert=write_endian,          &
+    access='direct', recl=nx*ny*nz*rprec)
+write(13,rec=1) this%fx(:nx,:ny,1:nz)
+write(13,rec=2) this%fy(:nx,:ny,1:nz)
+write(13,rec=3) this%fz(:nx,:ny,1:nz)
+close(13)
+endif
 
 open(unit=13, file=fname_cs, form='unformatted', convert=write_endian,         &
     access='direct', recl=nx*ny*nz*rprec)

@@ -196,10 +196,7 @@ if(use_sea_drag_model) then
         v1 = v_rel(:,:)
         !end do
 !! AA BOC
-!! We should not use the first grid point for stress calculaktions., Ideally use U10?.
-!! For now lets just use the third grid point. Only will change the wave routines
-!! z_3 = 5*dz/2    
- zloc  = 2.5_rprec*dz
+ zloc  = 0.5_rprec*dz
         denom = log(zloc/zo-eta(1:nx,:)/zo)
 
         do i=1,nx
@@ -271,13 +268,13 @@ do j = 1, ny
            
 ! AA Displacenment height correction to gradientsS
 #ifdef PPSCALARS
-           dudz(i,j,1) = ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*u1(i,j)/u_avg(i,j)   &
+           dudz(i,j,1) = -SIGN(1.0_rprec,txz(i,j,1))*ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*u1(i,j)/u_avg(i,j)   &
             * phi_m(i,j) 
-           dvdz(i,j,1) = ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*v1(i,j)/u_avg(i,j)   &
+           dvdz(i,j,1) = -SIGN(1.0_rprec,tyz(i,j,1))*ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*v1(i,j)/u_avg(i,j)   &
             * phi_m(i,j)
 #else
-           dudz(i,j,1) = ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*u1(i,j)/u_avg(i,j)
-           dvdz(i,j,1) = ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*v1(i,j)/u_avg(i,j)
+           dudz(i,j,1) = -SIGN(1.0_rprec,txz(i,j,1))*ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*u1(i,j)/u_avg(i,j)
+           dvdz(i,j,1) = -SIGN(1.0_rprec,tyz(i,j,1))*ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*v1(i,j)/u_avg(i,j)
 #endif
            dudz(i,j,1) = merge(0._rprec,dudz(i,j,1),u_rel(i,j).eq.0._rprec)
            dvdz(i,j,1) = merge(0._rprec,dvdz(i,j,1),v_rel(i,j).eq.0._rprec)
@@ -335,6 +332,174 @@ endif
 endif
 
 end subroutine ws_equilibrium_lbc
+
+!subroutine ws_equilibrium_abl_waves_lbc
+!
+!use param, only : coord, read_endian, dz, ld, nx, ny, vonk, zo, use_sea_drag_model, jt_total, total_time, path, nsteps_wavy
+!use param, only : sea_drag_io_flag, sea_drag_io_nstart, sea_drag_io_nend, sea_drag_io_nskip, write_endian,is_swell
+!use sim_param, only : u, v, ustar_lbc
+!use sea_surface_drag_model
+!use string_util
+!use test_filtermodule
+!#ifdef PPSCALARS
+!use scalars, only : obukhov, phi_m
+!#endif
+!
+!implicit none
+!
+!integer :: i, j
+!character (64) :: fname
+!real(rprec), dimension(nx, ny) :: denom, u_avg
+!real(rprec), dimension(ld, ny) :: u1, v1
+!real(rprec) :: const, time_wavy,factor,zloc,swell_term
+!logical :: exst
+!
+!if(use_sea_drag_model) then
+!        call sea_surface_drag_model_forces()
+!        !do i=1,nx
+!        u1 = u_rel(:,:)
+!        v1 = v_rel(:,:)
+!        !end do
+!!! AA BOC
+!!! For ABL flows, we assume a constant flux layer below 10m, and use velocity at 10m height for the model.
+!
+! zloc  = 10.0_rprec
+!        denom = log(zloc/zo-eta(1:nx,:)/zo)
+!
+!        do i=1,nx
+!        do j=1,ny
+!           if(isnan(denom(i,j))) then
+!                   print *,"denom has NaN"
+!                   stop
+!           elseif(denom(i,j).eq.0)then
+!                   print *,"denom has zero:i,j,dz,eta,dz-eta,zo,log(dz-eta)",i,j,zloc,eta(i,j) &
+!                                                      ,zloc-eta(i,j),zo,log(zloc/zo-eta(i,j)/zo)
+!           endif
+!        enddo
+!        enddo
+!        if (jt_total .eq. nsteps_wavy) then
+!              time_wavy = total_time
+!              if (coord==0) then
+!                  open(12, file='time_wavy.out', form='unformatted', convert=write_endian)
+!                  write(12) time_wavy
+!                  close(12)
+!                  if (coord==0) print*,"saved time_wavy", coord, jt_total, nsteps_wavy, time_wavy
+!              endif
+!        endif
+!        if (jt_total .gt. nsteps_wavy) then
+!              inquire (file='time_wavy.out', exist=exst)
+!              if (exst) then
+!                  open(13, file='time_wavy.out', form='unformatted', convert=read_endian)
+!                  read(13) time_wavy
+!                  close(13)
+!                  if(coord==0) print*,"time_wavy",jt_total, nsteps_wavy, time_wavy
+!              end if
+!        endif
+!else
+!        u1 = u(:,:,1)
+!        v1 = v(:,:,1)
+!        denom = log(0.5_rprec*dz/zo)
+!endif
+!
+!call test_filter(u1)
+!call test_filter(v1)
+!
+!
+!u_avg = sqrt(u1(1:nx,1:ny)**2+v1(1:nx,1:ny)**2)
+!#ifdef PPSCALARS
+!call obukhov(u_avg,denom)
+!#else
+!ustar_lbc = u_avg*vonk/denom
+!#endif
+!!ustar_av = sum(ustar_lbc)/(nx*ny)
+!do j = 1, ny
+!    do i = 1, nx
+!        const = -(ustar_lbc(i,j)**2)/u_avg(i,j)
+!        
+!       
+!        txz(i,j,1) = const*u1(i,j)
+!        tyz(i,j,1) = const*v1(i,j)
+!        ustar_lbc(i,j) = sqrt(sqrt(txz(i,j,1)**2+tyz(i,j,1)**2))  ! An aproximation of u_* based on tau_t
+!        if (use_sea_drag_model) then
+!           if (is_swell .and. (u_rel_c(i,j) .lt. 0.0_rprec) .and. (fd_u(i,j) .gt. 1.0E-8_rprec) )   then
+!                !! This assumes wave propagating in x-direction. This is ok for now as we tilt the flow and
+!                !! not the wave.
+!                swell_term = -0.5_rprec/dz*(24.975_rprec*ustar_lbc(i,j)**2 - 0.964*(c_phase*ustar_lbc(i,j)))*(ak)**2
+!!                if (coord .eq.0) write(*,*) "i,j,urel,ustar,swell,wdm",i,j,u_rel_c(i,j),ustar_lbc(i,j), swell_term, fd_u(i,j)
+!                fd_u(i,j) = swell_term 
+!            endif
+!           txz(i,j,1) = txz(i,j,1) + fd_u(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
+!           tyz(i,j,1) = tyz(i,j,1) + fd_v(i,j)*dz*(1-exp(-(total_time-time_wavy)**2))
+!           ustar_lbc(i,j) = sqrt(sqrt(txz(i,j,1)**2+tyz(i,j,1)**2))! Recalculate u_* based on total stress
+!           !this is as in Moeng 84
+!           
+!! AA Displacenment height correction to gradientsS
+!#ifdef PPSCALARS
+!           dudz(i,j,1) = -SIGN(1.0_rprec,txz(i,j,1))*ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*u1(i,j)/u_avg(i,j)   &
+!            * phi_m(i,j) 
+!           dvdz(i,j,1) = -SIGN(1.0_rprec,tyz(i,j,1))*ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*v1(i,j)/u_avg(i,j)   &
+!            * phi_m(i,j)
+!#else
+!           dudz(i,j,1) = -SIGN(1.0_rprec,txz(i,j,1))*ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*u1(i,j)/u_avg(i,j)
+!           dvdz(i,j,1) = -SIGN(1.0_rprec,tyz(i,j,1))*ustar_lbc(i,j)/((zloc-eta(i,j))*vonK)*v1(i,j)/u_avg(i,j)
+!#endif
+!           dudz(i,j,1) = merge(0._rprec,dudz(i,j,1),u_rel(i,j).eq.0._rprec)
+!           dvdz(i,j,1) = merge(0._rprec,dvdz(i,j,1),v_rel(i,j).eq.0._rprec)
+!        else
+!           !this is as in Moeng 84
+!#ifdef PPSCALAR
+!           dudz(i,j,1) = ustar_lbc(i,j)/((0.5_rprec*dz)*vonK)*u(i,j,1)/u_avg(i,j)   &
+!            * phi_m(i,j)
+!           dvdz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*v(i,j,1)/u_avg(i,j)   &
+!            * phi_m(i,j)
+!#else
+!           dudz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*u(i,j,1)/u_avg(i,j)
+!           dvdz(i,j,1) = ustar_lbc(i,j)/(0.5_rprec*dz*vonK)*v(i,j,1)/u_avg(i,j)
+!#endif
+!           dudz(i,j,1) = merge(0._rprec,dudz(i,j,1),u(i,j,1).eq.0._rprec)
+!           dvdz(i,j,1) = merge(0._rprec,dvdz(i,j,1),v(i,j,1).eq.0._rprec)
+!        endif
+!    end do
+!end do
+!
+!if(use_sea_drag_model) then
+!if (sea_drag_io_flag) then
+!    if ((jt_total >= sea_drag_io_nstart).and.(jt_total <= sea_drag_io_nend)) then
+!        if ( mod(jt_total-sea_drag_io_nstart,sea_drag_io_nskip)==0 ) then
+!                call string_splice(fname, path //'output/sea_drag_io.', jt_total)
+!                ! Write binary Output
+!                call string_concat(fname, '.bin')
+!                open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+!                     access='direct', recl=nx*ny*rprec)
+!                write(13,rec=1)    u(1:nx,1:ny,1)
+!                write(13,rec=2)    v(1:nx,1:ny,1)
+!                write(13,rec=3)   u1(1:nx,1:ny)
+!                write(13,rec=4)   v1(1:nx,1:ny)
+!                write(13,rec=5)  txz(1:nx,1:ny,1)
+!                write(13,rec=6)  tyz(1:nx,1:ny,1)
+!                write(13,rec=7)  eta(1:nx,1:ny)
+!                write(13,rec=8) detadx(1:nx,1:ny)
+!                write(13,rec=9) detady(1:nx,1:ny)
+!                write(13,rec=10) us_orb(1:nx,1:ny)
+!                write(13,rec=11) ws_orb(1:nx,1:ny)
+!                write(13,rec=12) u_rel(1:nx,1:ny)
+!                write(13,rec=13) v_rel(1:nx,1:ny)
+!                write(13,rec=14) w_rel(1:nx,1:ny)
+!                write(13,rec=15) u_rel_c(1:nx,1:ny)
+!                write(13,rec=16) v_rel_c(1:nx,1:ny)
+!                write(13,rec=17) n_u(1:nx,1:ny)
+!                write(13,rec=18) n_v(1:nx,1:ny)
+!                write(13,rec=19) fd_u(1:nx,1:ny)
+!                write(13,rec=20) fd_v(1:nx,1:ny) 
+!                write(13,rec=21) total_time
+!                close(13)
+!        endif
+!    endif
+!endif
+!endif
+!
+!
+!end subroutine 
 
 !!*******************************************************************************
 !subroutine ws_equilibrium_waves_lbc

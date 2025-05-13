@@ -91,7 +91,6 @@ use param, only : dz, use_sea_drag_model, use_exp_decay, coord
 use sim_param, only : fxa, fya, fza
 use mpi
 use mpi_defs, only : mpi_sync_real_array,MPI_SYNC_DOWNUP
-
 #ifdef PPTURBINES
 use sim_param, only : fxa, fya, fza
 use turbines, only:turbines_forcing
@@ -121,13 +120,14 @@ call atm_lesgo_forcing ()
 
 if (use_sea_drag_model .and. use_exp_decay) then
    do k=1,nz
-      fxa(:,:,k)=fd_u(:,:)*exp(-k_wavno*(grid%z(k)-0.5_rprec*dz))
-      fya(:,:,k)=fd_v(:,:)*exp(-k_wavno*(grid%z(k)-0.5_rprec*dz))
+      fxa(:,:,k)=fd_u(:,:)*exp(-k_wavno*(grid%z(k)-0.5_rprec*dz))*dz*k_wavno
+      fya(:,:,k)=fd_v(:,:)*exp(-k_wavno*(grid%z(k)-0.5_rprec*dz))*dz*k_wavno
    enddo
-
+   fza = 0.0_rprec
    if (coord == 0) then
       fxa(:,:,1)=0._rprec
       fya(:,:,1)=0._rprec
+      write(*,*)"max forcing", maxval(fxa(:,:,2)),maxval(fxa(:,:,3))
    endif
    call mpi_sync_real_array( fxa(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
    call mpi_sync_real_array( fya(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
