@@ -673,6 +673,14 @@ do
                 read (buff(equal_pos+1:), *) zplane_nskip
             case ('ZPLANE_LOC')
                 call parse_vector( buff(equal_pos+1:), zplane_nloc, zplane_loc )
+            case ('DOMAIN_XZ_CALC')
+                read (buff(equal_pos+1:), *) domain_xz_calc
+            case ('DOMAIN_XZ_NSTART')
+                read (buff(equal_pos+1:), *) domain_xz_nstart
+            case ('DOMAIN_XZ_NEND')
+                read (buff(equal_pos+1:), *) domain_xz_nend
+            case ('DOMAIN_XZ_NSKIP')
+                read (buff(equal_pos+1:), *) domain_xz_nskip
             case default
                 if (coord == 0) write(*,*) 'Found unused data value in '       &
                     // block_name // ' block: ' // buff(1:equal_pos-1)

@@ -1,3 +1,0 @@
-/home/ada823/lesgo_sol/lesgo/bld/CMakeFiles/lesgo-mpi-scalars.dir
-/home/ada823/lesgo_sol/lesgo/bld/CMakeFiles/edit_cache.dir
-/home/ada823/lesgo_sol/lesgo/bld/CMakeFiles/rebuild_cache.dir

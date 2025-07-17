@@ -775,6 +775,7 @@ use param, only : jt_total, dt
 use param, only : checkpoint_data, checkpoint_nskip
 use param, only : tavg_calc, tavg_nstart, tavg_nend, tavg_nskip
 use param, only : point_calc, point_nstart, point_nend, point_nskip
+use param, only : domain_xz_calc, domain_xz_nstart, domain_xz_nend, domain_xz_nskip
 use param, only : domain_calc, domain_nstart, domain_nend, domain_nskip
 use param, only : xplane_calc, xplane_nstart, xplane_nend, xplane_nskip
 use param, only : yplane_calc, yplane_nstart, yplane_nend, yplane_nskip
@@ -908,6 +909,24 @@ if(zplane_calc) then
     end if
 end if
 
+!  Determine if instantaneous spanwise averaged domain velocities are to be recorded
+if(domain_xz_calc) then
+    if (jt_total >= domain_xz_nstart .and. jt_total <= domain_xz_nend .and.          &
+        ( mod(jt_total-domain_xz_nstart,domain_xz_nskip)==0) ) then
+        if (jt_total == domain_xz_nstart) then
+            if (coord == 0) then
+                write(*,*) '-------------------------------'
+                write(*,"(1a,i9,1a,i9)")                                       &
+                    'Writing instantaneous y-averaged domain velocities from ',           &
+                    domain_xz_nstart, ' to ', domain_xz_nend
+                write(*,"(1a,i9)") 'Iteration skip:', domain_xz_nskip
+                write(*,*) '-------------------------------'
+            end if
+
+        end if
+        call inst_write(6)
+    end if
+end if
 end subroutine output_loop
 
 !*******************************************************************************
@@ -922,6 +941,7 @@ subroutine inst_write(itype)
 !   x-planes : itype=3
 !   y-planes : itype=4
 !   z-planes : itype=5
+!   xz-planes: itype=6
 !
 ! For the points and planar data, this subroutine writes using the
 ! locations specfied from the param module.
@@ -1384,6 +1404,215 @@ elseif (itype==5) then
 #endif
     end do
     deallocate(ui,vi,wi)
+
+!  Instantaneous y-averaged  write for entire domain
+elseif(itype==6) then
+    ! Common file name for all output types
+    call string_splice(fname, path //'output/velxz.', jt_total)
+
+#if defined(PPCGNS) && defined(PPMPI)
+    ! Write CGNS Output
+    call string_concat(fname, '.cgns')
+    call write_parallel_cgns(fname, nx, ny, nz - nz_end, nz_tot,               &
+        (/ 1, 1,   (nz-1)*coord + 1 /),                                        &
+        (/ nx, ny, (nz-1)*(coord+1) + 1 - nz_end /),                           &
+        x(1:nx) , y(1:ny) , z(1:(nz-nz_end) ),                                 &
+        3, (/ 'VelocityX', 'VelocityY', 'VelocityZ' /),                        &
+        (/ u(1:nx,1:ny,1:(nz-nz_end)), v(1:nx,1:ny,1:(nz-nz_end)),             &
+         w_uv(1:nx,1:ny,1:(nz-nz_end)) /) )
+#else
+    ! Write binary Output
+    call string_concat(fname, bin_ext)
+    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+        access='direct', recl=nx*nz*rprec)
+    write(13,rec=1) SUM(u(:nx,:ny,1:nz),DIM=2)/ny
+    write(13,rec=2) SUM(v(:nx,:ny,1:nz),DIM=2)/ny
+    write(13,rec=3) SUM(w_uv(:nx,:ny,1:nz),DIM=2)/ny
+    close(13)
+#endif
+
+    ! Common file name for all output types
+    call string_splice(fname, path //'output/sgsxz.', jt_total)
+
+#if defined(PPCGNS) && defined(PPMPI)
+    ! Write CGNS Output
+    call string_concat(fname, '.cgns')
+    call write_parallel_cgns(fname, nx, ny, nz - nz_end, nz_tot,               &
+        (/ 1, 1,   (nz-1)*coord + 1 /),                                        &
+        (/ nx, ny, (nz-1)*(coord+1) + 1 - nz_end /),                           &
+        x(1:nx) , y(1:ny) , z(1:(nz-nz_end) ),                                 &
+        5, (/ 'Cs_opt2', 'LM', 'MM','QN','NN','Nu_t' /),                        &
+        (/ Cs_opt2(1:nx,1:ny,1:(nz-nz_end)), F_LM(1:nx,1:ny,1:(nz-nz_end)),             &
+         F_MM(1:nx,1:ny,1:(nz-nz_end)),F_QN(1:nx,1:ny,1:(nz-nz_end)), F_NN(1:nx,1:ny,1:(nz-nz_end)), Nu_t(1:nx,1:ny,1:(nz-nz_end)) /) )
+#else
+    ! Write binary Output
+    call string_concat(fname, bin_ext)
+    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+        access='direct', recl=nx*nz*rprec)
+    write(13,rec=1) SUM( Cs_opt2(:nx,:ny,1:nz),DIM=2)/ny
+    write(13,rec=2) SUM( F_LM(:nx,:ny,1:nz), DIM=2 )/ny
+    write(13,rec=3) SUM( F_MM(:nx,:ny,1:nz), DIM=2 )/ny
+    write(13,rec=4) SUM( F_QN(:nx,:ny,1:nz), DIM=2 )/ny
+    write(13,rec=5) SUM( F_NN(:nx,:ny,1:nz), DIM=2 )/ny
+    write(13,rec=6) SUM( Nu_t(:nx,:ny,1:nz), DIM=2 )/ny
+    close(13)
+#endif
+
+    ! Common file name for all output types !GN
+    call string_splice(fname, path //'output/tau_sgsxz.', jt_total)
+
+#if defined(PPCGNS) && defined(PPMPI)
+    ! Write CGNS Output
+    call string_concat(fname, '.cgns')
+    call write_parallel_cgns(fname, nx, ny, nz - nz_end, nz_tot,               &
+        (/ 1, 1,   (nz-1)*coord + 1 /),                                        &
+        (/ nx, ny, (nz-1)*(coord+1) + 1 - nz_end /),                           &
+        x(1:nx) , y(1:ny) , z(1:(nz-nz_end) ),                                 &
+        5, (/ 'txx', 'tyy', 'tzz','txy','txz','tyz' /),                        &
+        (/ txx(1:nx,1:ny,1:(nz-nz_end)), tyy(1:nx,1:ny,1:(nz-nz_end)),             &
+         tzz(1:nx,1:ny,1:(nz-nz_end)),txy(1:nx,1:ny,1:(nz-nz_end)), txz(1:nx,1:ny,1:(nz-nz_end)), tyz(1:nx,1:ny,1:(nz-nz_end)) /) )
+#else
+    ! Write binary Output
+    call string_concat(fname, bin_ext)
+    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+        access='direct', recl=nx*nz*rprec)
+    write(13,rec=1) SUM(txx(:nx,:ny,1:nz), DIM = 2)/ny
+    write(13,rec=2) SUM(tyy(:nx,:ny,1:nz), DIM = 2)/ny
+    write(13,rec=3) SUM(tzz(:nx,:ny,1:nz), DIM = 2)/ny
+    write(13,rec=4) SUM(txy(:nx,:ny,1:nz), DIM = 2)/ny
+    write(13,rec=5) SUM(txz(:nx,:ny,1:nz), DIM = 2)/ny
+    write(13,rec=6) SUM(tyz(:nx,:ny,1:nz), DIM = 2)/ny
+    close(13)
+#endif
+
+    ! Common file name for all output types !AA
+    call string_splice(fname, path //'output/wavestressxz.', jt_total)
+
+#if defined(PPCGNS) && defined(PPMPI)
+    ! Write CGNS Output
+    call string_concat(fname, '.cgns')
+    call write_parallel_cgns(fname, nx, ny, nz - nz_end, nz_tot,               &
+        (/ 1, 1,   (nz-1)*coord + 1 /),                                        &
+        (/ nx, ny, (nz-1)*(coord+1) + 1 - nz_end /),                           &
+        x(1:nx) , y(1:ny) , z(1:(nz-nz_end) ),                                 &
+        5, (/ 'txx', 'tyy', 'tzz','txy','txz','tyz' /),                        &
+        (/ fxa(1:nx,1:ny,1:(nz-nz_end)), fya(1:nx,1:ny,1:(nz-nz_end)),             &
+         fza(1:nx,1:ny,1:(nz-nz_end)) /) )
+#else
+    if (use_sea_drag_model .and. use_exp_decay) then
+            fxa(:nx,:ny,1) = fd_u(:nx,:ny)*dz 
+            fya(:nx,:ny,1) = fd_v(:nx,:ny)*dz
+    ! Write binary Output
+    call string_concat(fname, bin_ext)
+    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+        access='direct', recl=nx*nz*rprec)
+    write(13,rec=1) SUM(fxa(:nx,:ny,1:nz), DIM = 2)/ny
+    write(13,rec=2) SUM(fya(:nx,:ny,1:nz), DIM = 2)/ny
+    write(13,rec=3) SUM(fza(:nx,:ny,1:nz), DIM = 2)/ny
+    close(13)
+    endif
+#endif
+
+    ! Compute vorticity
+    allocate(vortx(nx,ny,lbz:nz), vorty(nx,ny,lbz:nz), vortz(nx,ny,lbz:nz))
+    vortx(1:nx,1:ny,lbz:nz) = 0._rprec
+    vorty(1:nx,1:ny,lbz:nz) = 0._rprec
+    vortz(1:nx,1:ny,lbz:nz) = 0._rprec
+
+    ! Use vorticityx as an intermediate step for performing uv-w interpolation
+    ! Vorticity is written in w grid
+    vortx(1:nx,1:ny,lbz:nz) = dvdx(1:nx,1:ny,lbz:nz) - dudy(1:nx,1:ny,lbz:nz)
+    vortz(1:nx,1:ny,lbz:nz) = interp_to_w_grid( vortx(1:nx,1:ny,lbz:nz), lbz)
+    vortx(1:nx,1:ny,lbz:nz) = dwdy(1:nx,1:ny,lbz:nz) - dvdz(1:nx,1:ny,lbz:nz)
+    vorty(1:nx,1:ny,lbz:nz) = dudz(1:nx,1:ny,lbz:nz) - dwdx(1:nx,1:ny,lbz:nz)
+
+    if (coord == 0) then
+        vortz(1:nx,1:ny, 1) = 0._rprec
+    end if
+
+    ! Common file name for all output types
+    call string_splice(fname, path //'output/vortxz.', jt_total)
+
+#if defined(PPCGNS) && defined(PPMPI)
+    ! Write CGNS Output
+    call string_concat(fname, '.cgns')
+    call write_parallel_cgns(fname,nx,ny, nz - nz_end, nz_tot,                 &
+        (/ 1, 1,   (nz-1)*coord + 1 /),                                        &
+        (/ nx, ny, (nz-1)*(coord+1) + 1 - nz_end /),                           &
+        x(1:nx) , y(1:ny) , zw(1:(nz-nz_end) ),                                &
+        3, (/ 'VorticityX', 'VorticityY', 'VorticityZ' /),                     &
+        (/ vortx(1:nx,1:ny,1:(nz-nz_end)), vorty(1:nx,1:ny,1:(nz-nz_end)),     &
+        vortz(1:nx,1:ny,1:(nz-nz_end)) /) )
+
+#else
+    ! Write binary Output
+    call string_concat(fname, bin_ext)
+    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+        access='direct', recl=nx*nz*rprec)
+    write(13,rec=1) SUM(vortx(:nx,:ny,1:nz),DIM=2)/ny
+    write(13,rec=2) SUM(vorty(:nx,:ny,1:nz),DIM=2)/ny
+    write(13,rec=3) SUM(vortz(:nx,:ny,1:nz),DIM=2)/ny
+    close(13)
+#endif
+
+    deallocate(vortx, vorty, vortz)
+
+    ! Compute pressure
+    allocate(pres_real(nx,ny,lbz:nz))
+    pres_real(1:nx,1:ny,lbz:nz) = 0._rprec
+
+    ! Calculate real pressure
+    pres_real(1:nx,1:ny,lbz:nz) = p(1:nx,1:ny,lbz:nz)                          &
+        - 0.5 * ( u(1:nx,1:ny,lbz:nz)**2                                       &
+        + interp_to_uv_grid( w(1:nx,1:ny,lbz:nz), lbz)**2                      &
+        + v(1:nx,1:ny,lbz:nz)**2 )
+
+    ! Common file name for all output types
+    call string_splice(fname, path //'output/presxz.', jt_total)
+
+#if defined(PPCGNS) && defined(PPMPI)
+    ! Write CGNS Output
+    call string_concat(fname, '.cgns')
+    call write_parallel_cgns(fname, nx, ny, nz - nz_end, nz_tot,               &
+        (/ 1, 1,   (nz-1)*coord + 1 /),                                        &
+        (/ nx, ny, (nz-1)*(coord+1) + 1 - nz_end /),                           &
+        x(1:nx) , y(1:ny) , z(1:(nz-nz_end) ),                                 &
+        1, (/ 'Pressure' /), (/ pres_real(1:nx,1:ny,1:(nz-nz_end)) /) )
+
+#else
+    ! Write binary Output
+    call string_concat(fname, bin_ext)
+    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+        access='direct', recl=nx*nz*rprec)
+    write(13,rec=1) SUM(pres_real(:nx,:ny,1:nz), DIM =2)/ny
+    close(13)
+#endif
+
+     deallocate(pres_real)
+
+#ifdef PPSCALARS
+    ! Common file name for all output types
+    call string_splice(fname, path //'output/thetaxz.', jt_total)
+#if defined(PPCGNS) && defined(PPMPI)
+    ! Write CGNS Output
+    call string_concat(fname, '.cgns')
+    call write_parallel_cgns(fname, nx, ny, nz - nz_end, nz_tot,               &
+     (/ 1, 1,   (nz-1)*coord + 1 /),                                           &
+     (/ nx, ny, (nz-1)*(coord+1) + 1 - nz_end /),                              &
+     x(1:nx) , y(1:ny) , z(1:(nz-nz_end) ),                                    &
+     1, (/ 'Theta' /), (/ theta(1:nx,1:ny,1:(nz-nz_end)) /) )
+#else
+    ! Write binary Output
+    call string_concat(fname, bin_ext)
+    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+     access='direct', recl=nx*nz*rprec)
+    write(13,rec=1) SUM(theta(:nx,:ny,1:nz),DIM=2)/ny
+    write(13,rec=2) SUM(pi_x(:nx,:ny,1:nz),DIM=2)/ny    !GN
+    write(13,rec=3) SUM(pi_y(:nx,:ny,1:nz),DIM=2)/ny    !GN
+    write(13,rec=4) SUM(pi_z(:nx,:ny,1:nz),DIM=2)/ny    !GN
+    close(13)
+#endif
+#endif
 else
     write(*,*) 'Error: itype not specified properly to inst_write!'
     stop

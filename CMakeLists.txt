@@ -28,7 +28,7 @@ option(USE_ATM "Enable actuator line/section model" OFF)
 option(USE_DYN_TN "Dynamically update T, the timescale for Lagrangian averaging, using Taylor timescale." OFF)
 option(USE_SAFETYMODE "Set extra safety measures." ON)
 option(USE_CGNS "Enable CGNS data output." OFF)
-option(USE_SCALARS "Enable scalar transport module." ON)
+option(USE_SCALARS "Enable scalar transport module." OFF)
 
 # Enable verbose mode
 set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -39,7 +39,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 # Set compiler versions for Cmake
 #  Intel
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
-    set(compiler_name "ifort")
+    set(compiler_name "ifx")
 #  GNU
 elseif (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     set(compiler_name "gfortran")
@@ -152,14 +152,15 @@ elseif (${hostname} STREQUAL "derecho")
 
 elseif (${hostname} STREQUAL "sol_rapids")
     # Intel
-    if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
-	    include_directories($ENV{LURC_FFTW_DIR}/include)
-	link_directories($ENV{LURC_FFTW_DIR}/lib)
-	#        link_libraries(fftw3)
+    if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_Fortran_COMPILER_ID} STREQUAL "IntelLLVM" )
+	    include_directories(/share/Apps/cascade24v2/oneapi-2025.0.0/fftw-3.3.10-tynpcggzvtg3rrrnx3rd3v4bcfobrn3v/include)
+	link_directories(/share/Apps/cascade24v2/oneapi-2025.0.0/fftw-3.3.10-tynpcggzvtg3rrrnx3rd3v4bcfobrn3v/lib)
+	        link_libraries(fftw3)
     # GNU -- These have to be installed locally for now.
     elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 	    include_directories($ENV{LURC_FFTW_DIR}/include)
 	link_directories($ENV{LURC_FFTW_DIR}/lib)
+	link_libraries(fftw3)
         if (USE_CGNS)
             include_directories($ENV{HOME}/cgns/include/)
             link_directories($ENV{HOME}/hdf5/lib/ $ENV{HOME}/cgns/lib/)
@@ -200,7 +201,7 @@ set (Sources cfl_util.f90 clocks.f90 convec.f90 coriolis.f90 derivatives.f90 div
 
 if (USE_MPI)
     add_definitions(-DPPMPI)
-    set (CMAKE_Fortran_COMPILER mpifort)
+    set (CMAKE_Fortran_COMPILER mpif90)
     set(Sources ${Sources} mpi_transpose_mod.f90 mpi_defs.f90)
     set(exec_name "${exec_name}-mpi")
 endif (USE_MPI)
@@ -283,12 +284,12 @@ if (READ_ENDIAN STREQUAL "BIG")
 endif (READ_ENDIAN STREQUAL "BIG")
 
 # Intel
-if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel" )
     #set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp -O2  -funroll-loops -no-wrap-margin -assume byterecl")
-    set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp -O2 -g -traceback -no-wrap-margin -assume byterecl")
+    set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp -O2 -g -ftrapuv -traceback -no-wrap-margin -assume byterecl")
 # GNU
-else (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
-    set (CMAKE_Fortran_FLAGS "-cpp -O2 -ffast-math -ffree-line-length-none -funroll-loops -fall-intrinsics -Wall -fcheck=all")
+else (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+    set (CMAKE_Fortran_FLAGS "-cpp -O2 -ffast-math -ffree-line-length-none -mcmodel=large -funroll-loops -fall-intrinsics -Wall -fcheck=all")
     #set (CMAKE_Fortran_FLAGS "-cpp -O0 -g -fbacktrace -fall-intrinsics -Wall -fcheck=all")
 endif (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
 

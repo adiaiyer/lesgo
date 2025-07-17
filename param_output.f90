@@ -177,6 +177,8 @@ write(2,i_fmt) 'zplane_nloc : ', zplane_nloc
 do n=1,zplane_nloc
   write(2,if_fmt) 'n, zplane_loc(n) : ', n, zplane_loc(n)
 enddo
+write(2,l_fmt) 'domain_xz_calc : ', domain_xz_calc
+write(2,x3i_fmt) 'domain_xz_nstart, domain_xz_nend, domain_xz_nskip : ', domain_xz_nstart, domain_xz_nend, domain_xz_nskip
 
 #ifdef PPLVLSET
 write(2,c_fmt) ''

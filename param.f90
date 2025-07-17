@@ -286,4 +286,7 @@ integer :: zplane_nstart=10000, zplane_nend=50000, zplane_nskip=10000
 integer :: zplane_nloc=1
 real(rprec), allocatable, dimension(:) :: zplane_loc
 
+! domain y-averaged instantaneous output
+logical :: domain_xz_calc=.false.
+integer :: domain_xz_nstart=10000, domain_xz_nend=50000, domain_xz_nskip=10000
 end module param
